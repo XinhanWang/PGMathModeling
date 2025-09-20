@@ -1,0 +1,101 @@
+%% 注意：代码文件仅供参考，一定不要直接用于自己的数模论文中
+%% 国赛对于论文的查重要求非常严格，代码雷同也算作抄袭
+%% 全套课程购买地址：https://k.youshop10.com/NjNu80mX
+%% 全套教材PPT请关注微信公众号：大师兄的知识库
+%% 模拟退火解决TSP问题
+clear;clc
+% TSP常用数据集：https://people.sc.fsu.edu/~jburkardt/datasets/tsp/tsp.html
+% save('coord_mat', 'coord')
+load('coord_mat')
+n = size(coord,1);  % 城市的数目
+coord = [coord (1:n)]; % 给城市编号
+
+% 设置起点城市和终点城市
+begin_city = 1;  % 起点
+end_city = 20; % 终点
+tmp = coord;  % 备份下原来的坐标
+coord([begin_city end_city],:) = []; % 将起点和终点坐标先删除
+coord = [tmp(begin_city,:); coord; tmp(end_city,:)];  % 重新调整坐标，此时起点在最开始，终点在最后面
+
+% 绘制城市分布图
+figure  % 新建一个图形窗口
+plot(coord(:,1),coord(:,2),'o');   % 画出城市的分布散点图
+hold on;
+
+
+dist = zeros(n);   % 初始化任意两个城市的距离矩阵
+for i = 2:n  
+    for j = 1:i  
+        coord_i = coord(i,:);   x_i = coord_i(1);     y_i = coord_i(2);  % 城市i的横坐标为x_i，纵坐标为y_i
+        coord_j = coord(j,:);   x_j = coord_j(1);     y_j = coord_j(2);  % 城市j的横坐标为x_j，纵坐标为y_j
+        dist(i,j) = sqrt((x_i-x_j)^2 + (y_i-y_j)^2);   % 计算城市i和j的距离
+    end
+end
+dist = dist+dist;   % 生成距离矩阵的上三角部分
+
+
+%% 模拟退火部分
+T0 = 1000;   % 初始温度
+T = T0; % 迭代中温度会发生改变，第一次迭代时温度就是T0
+maxgen = 200;  % 最大迭代次数
+Lk = 20;  % 每个温度下的迭代次数
+alfa = 0.95;  % 温度衰减系数
+
+% 随机生成一个初始解
+path0 = randperm(n-2) + 1;  % 生成一个2至n-1的随机打乱的序列，目的是排除掉起点和终点
+path0 = [1, path0, n]; % 生成初始的路径
+result0 = caculate_tsp(path0, dist) % 计算当前路径的距离
+
+% 定义一些保存中间过程的量，方便输出结果和画图
+min_result = result0;     % 初始化找到的最佳的解对应的距离为result0
+RESULT = zeros(maxgen,1); % 记录每一次外层循环结束后找到的min_result
+
+% 模拟退火过程
+for iter = 1 : maxgen  % 外循环, 指定最大迭代次数
+    for i = 1 : Lk  %  内循环，在每个温度下开始迭代
+        path1 = gen_new_path(path0, dist);  % 用改良圈算法生成新的路径
+        % path1 = gen_new_path1(path0);  % 用其他算法生成新的路径
+        result1 = caculate_tsp(path1,dist); % 计算新路径的距离
+        if result1 < result0    % 如果新路径的距离小于当前路径的距离
+            path0 = path1; % 更新当前路径为新路径
+            result0 = result1;
+        else
+            p = exp(-(result1 - result0)/T); % 计算一个概率
+            if rand(1) < p   % 生成一个随机数和这个概率比较，如果该随机数小于这个概率
+                path0 = path1;  % 更新当前路径为新路径
+                result0 = result1;
+            end
+        end
+         % 判断是否要更新找到的最佳的解
+        if result0 < min_result  % 如果当前解更好，则对其进行更新
+            min_result = result0;  % 更新最小的距离
+            best_path = path0;  % 更新找到的最短路径
+        end
+    end
+    RESULT(iter) = min_result; % 保存本轮外循环结束后找到的最小距离
+    T = alfa*T;   % 温度下降       
+end
+
+% 打印我们的路径，此时coord第三列就可以帮我们还原真实的编号了
+path_str = ''; % 生成一个空的字符串
+for i = 1:n-1 
+    path_str =  strcat(path_str, num2str(coord(best_path(i),3)), '-->');  % 不断更新这个字符串(strcat是字符串拼接函数)
+end
+path_str =strcat(path_str, num2str(coord(n,3))); % 别忘了加上终点
+disp('最佳的方案是：'); disp(path_str)
+disp('对应最优值是：'); disp(min_result)
+
+
+for i = 1:n-1 
+     j = i+1;
+    coord_i = coord(best_path(i),:);   x_i = coord_i(1);     y_i = coord_i(2); 
+    coord_j = coord(best_path(j),:);   x_j = coord_j(1);     y_j = coord_j(2);
+    plot([x_i,x_j],[y_i,y_j],'-b')    % 每两个点就作出一条线段，直到所有的城市都走完
+    hold on
+end
+
+% 绘制迭代次数与最短路径长度关系图
+figure
+plot(1:maxgen,RESULT,'b-');
+xlabel('迭代次数');
+ylabel('路径长度');

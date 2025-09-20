@@ -1,0 +1,25 @@
+function path1 = gen_new_path(path0, dist)  
+    % path0: 原来的路径
+    L = length(path0);
+    path1 = path0;% 初始圈
+    for k = 1 : L
+        flag = 0;% 修改标志
+        for i = 1 : L-2  % i是第一条弧的起点
+            for j = i + 2 : L % j是第二条弧的起点
+                if(j == 48)
+                    disp('48')
+                end
+                if( dist(path1(i),path1(j)) + dist(path1(i+1),path1(j+1)) < dist(path1(i),path1(i+1)) + dist(path1(j),path1(j+1)) )
+                    path1(i+1:j) = path1(j:-1:i+1);% 翻转中间的路径,j:-1:i+1表示从j到i+1，步长为-1
+                    flag = flag + 1;
+                end
+            end
+        end
+        if(flag == 0) %本轮没有找到2条更短的弧
+            long = 0; %圈长
+            for i = 1 : L
+                long = long + dist(path1(i),path1(i+1));
+            end
+        end
+    end
+end
